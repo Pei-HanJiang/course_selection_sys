@@ -12,10 +12,15 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy
 db = SQLAlchemy(app)
-def has_overlap(str1, str2):
-    slots1 = set(str1.split(','))
+def has_overlap(list1, str2):
+    if not list1:
+        return False
+    slots1 = set(list1.split(','))
+    print(f"slots1:{slots1}")
     slots2 = set(str2.split(','))
+    print(f"slots2:{slots2}")
     overlap = slots1.intersection(slots2)
+    print(f"overlap:{overlap}")
     return bool(overlap)
 
 
@@ -34,7 +39,7 @@ def add():
         # logging.info(f'Student ID: {student_id}')
         # logging.info(f'Course ID: {course_id}')
         # dummy-proof
-        # 4. if course period overlaps
+        # 4. if course period overlaps => test pass?
         periods = db.engine.execute(f"""SELECT period
                                     FROM Enrollments
                                     LEFT JOIN Courses
@@ -42,14 +47,17 @@ def add():
                                     WHERE student_id = {student_id}
                                     """).fetchall()
         periods = [row[0] for row in periods]
-        logging.info(periods)
+        periods_combined = ','.join(periods)
+        logging.info(periods_combined)
 
         course_periods = db.engine.execute(f"""SELECT period
                                            FROM Courses
-                                           WHERE course_id = {course_id}""")
+                                           WHERE course_id = {course_id}""").fetchall()
         course_periods = [row[0] for row in course_periods]
-        logging.info(course_periods)
-        if has_overlap(course_periods[0], periods[0]):
+        course_slots = ','.join(course_periods)
+        logging.info(course_slots)
+        if has_overlap(periods_combined, course_slots):
+            print("overlapppppppppppping")
             return "fail, Course period overlaps"
         
         # 1. if chosen already => test pass
@@ -140,14 +148,52 @@ def drop():
         # Retrieve form data
         student_id = request.form['inputStudentID']
         course_id = request.form['inputCourseID']
-        # dummy-proof
-        
-        
         # double-check 
         # logging.info(f'Student ID: {student_id}')
         # logging.info(f'Course ID: {course_id}')
+        # dummy-proof
+        # check if it's allow to drop
+        # 1.check if the student has the course => test pass
+        result = db.engine.execute(f"""SELECT enroll_id
+                          FROM Enrollments
+                          WHERE student_id = {student_id}
+                          AND course_id = {course_id}
+                          """).fetchall()
+        logging.info(result)
+        if not result:
+            return "Fail, the course is not enrolled"
+        
+        # 2. check if total_credit < 9 after drop
+        course_credit = db.engine.execute(f"""SELECT credit
+                                            FROM Courses
+                                            WHERE course_id = {course_id}""").fetchone()[0]
+        current_credit = db.engine.execute(f"""SELECT total_credit
+                                            FROM Students
+                                            WHERE student_id = {student_id}""").fetchone()[0]
+        if current_credit - course_credit < 9:
+            return "fail, exceeding credit minimum"
+        
+        # 3. check if course is mandatory to take
+        is_mandatory = db.engine.execute(f"""SELECT is_mandatory
+                                         FROM Courses
+                                         WHERE course_id = {course_id}""").fetchone()[0]
+        logging.info(is_mandatory)
+        if is_mandatory:
+            return "cannot withdraw unless contact the office"
+
+
         # Delete from enrollments where student_id and course_id equals given data
         db.engine.execute(f"DELETE FROM Enrollments WHERE student_id={student_id} AND course_id={course_id}")
+        # 1. update course current capacity
+        db.engine.execute(f"""UPDATE Courses 
+                          SET current_capacity = current_capacity - 1
+                          WHERE course_id = {course_id}""")
+        # 2. update student total credits
+
+        db.engine.execute(f"""UPDATE Students 
+                    SET total_credit = total_credit - {course_credit}
+                    WHERE student_id = {student_id}""")
+
         # give a notice wether it's done or not, then return empty template
         return render_template('drop.html')
     else:
