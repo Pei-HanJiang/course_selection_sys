@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .form-group.row {
+        margin-top: 10px;
+        margin-bottom: 10px; /* Adjust as needed */
+        margin-left: 30px;
+    }
+
+</style>
+    
+<form action="/schedule" method="post">
+    <div class="form-group row">
+      <label for="inputStudentID" class="col-sm-2 col-form-label">Studnet ID</label>
+      <div class="col-sm-4">
+        <input type="text" class="form-control" id="inputStudentID" name="inputStudentID" placeholder="Student ID">
+      </div>
+    </div>
+    <div class="form-group row" id="button">
+      <div class="col-sm-10">
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </div>
+    </div>
+</form>
+
+<table class="table">
+    <thead>
+      <tr>
+        <th scope="col">Period</th>
+        <th scope="col">Mon</th>
+        <th scope="col">Tue</th>
+        <th scope="col">Wed</th>
+        <th scope="col">Thu</th>
+        <th scope="col">Fri</th>
+      </tr>
+    </thead>
+    <tbody id="schedule-body">
+        <!-- Table rows will be generated dynamically here -->
+    </tbody>
+</table>
+
+
+<script>
+  // Function to generate table rows
+  function generateRows() {
+    var tbody = document.getElementById('schedule-body');
+    var rowsCount = 14; // Number of rows to generate
+    
+    for (var i = 1; i <= rowsCount; i++) {
+      var row = document.createElement('tr');
+      
+      // Time cell
+      var timeCell = document.createElement('td');
+      timeCell.textContent = i;
+      row.appendChild(timeCell);
+      
+      // Empty cells for each day
+      for (var j = 0; j < 5; j++) {
+        var emptyCell = document.createElement('td');
+        emptyCell.setAttribute('id', 'cell_' + i + '_' + j); // Set a unique id for each cell
+        row.appendChild(emptyCell);
+      }
+      
+      tbody.appendChild(row);
+    }
+  }
+  
+  // Function to add text to a specific cell
+  function addTextToCell(row, col, text) {
+    var cellId = 'cell_' + row + '_' + col;
+    var cell = document.getElementById(cellId);
+    if (cell) {
+      cell.textContent = text;
+    }
+  }
+  
+  // Call the function to generate rows
+  generateRows();
+  
+  // Example usage: Add text to row 3, column 2
+  addTextToCell(3, 2, 'Database System Design');
+</script>
+
+{% endblock %}
