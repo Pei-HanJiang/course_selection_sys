@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .form-group.row {
+        margin-top: 10px;
+        margin-bottom: 10px; /* Adjust as needed */
+        margin-left: 30px;
+    }
+
+</style>
+    
+<form action="/create" method="post">
+  <div class="form-group row">
+    <label for="inputStudentID" class="col-sm-2 col-form-label">Department</label>
+    <div class="col-sm-4">
+      <input type="text" class="form-control" id="inputDepartment" name="inputDepartment" placeholder="Department">
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="inputCourseID" class="col-sm-2 col-form-label">Year</label>
+    <div class="col-sm-4">
+      <input type="text" class="form-control" id="inputYear" name="inputYear" placeholder="Year">
+    </div>
+  </div>
+  <div class="form-group row" id="button">
+    <div class="col-sm-10">
+      <button type="submit" class="btn btn-primary">Add Student</button>
+    </div>
+  </div>
+</form>
+
+{% endblock %}
+
+

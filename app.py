@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request
 from flask_sqlalchemy import SQLAlchemy
-
 import logging
+
 app = Flask(__name__)
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -9,7 +9,6 @@ logging.basicConfig(level=logging.INFO)
 # Configure SQLAlchemy
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://ph:test123@localhost/course_selection'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 # Initialize SQLAlchemy
 db = SQLAlchemy(app)
 def has_overlap(list1, str2):
@@ -23,6 +22,8 @@ def has_overlap(list1, str2):
     print(f"overlap:{overlap}")
     return bool(overlap)
 
+def add_course(student_id, course_id):
+    return "success?"
 
 @app.route('/')
 def index():
@@ -30,7 +31,7 @@ def index():
 
 # no need to query in every condition
 @app.route('/add', methods=['GET','POST'])
-def add():
+def add_form():
     if request.method == 'POST':
         # Retrieve form data
         student_id = request.form['inputStudentID']
@@ -201,6 +202,36 @@ def drop():
         return render_template('drop.html')
 
 
+@app.route('/create', methods=['GET', 'POST'])
+def create():
+    if request.method == 'POST':
+        department = request.form['inputDepartment']
+        year = request.form['inputYear']
+        # logging.info(type(department))
+        # logging.info(type(year))
+        
+        # Create a new student, need to be careful with strings
+        db.engine.execute("INSERT INTO Students (department, year) VALUES (%s, %s)", (department, year))
+        # get the lastest student's id
+        student_id = db.engine.execute("""SELECT student_id
+                                       FROM Students
+                                       ORDER BY student_id DESC
+                                       LIMIT 1""").fetchone()[0]
+        
+        # get all the course_id with same department, same year, and is_mandatory is True
+        course_ids = db.engine.execute("""SELECT course_id
+                                       FROM Courses
+                                       WHERE department = %s 
+                                       AND year = %s
+                                       AND is_mandatory = True""", (department, year)).fetchall()
+        course_ids = [row[0] for row in course_ids]
+        for course_id in course_ids:
+            db.engine.execute(f"INSERT INTO Enrollments(student_id, course_id) VALUES ({student_id}, {course_id})")
+        # logging.info(course_ids)
+        # To-do: update student total credits
+        return "success"
+    else:
+        return render_template('create.html')
 
 @app.route('/schedule', methods=['GET', 'POST'])
 def schedule():
@@ -208,14 +239,16 @@ def schedule():
         # Retrieve data
         student_id = request.form['inputStudentID']
         # Query the database to retrieve the courses for the given student_id
-        courses_data = db.engine.execute(f"""SELECT course_name, periods
+        courses_data = db.engine.execute(f"""SELECT course_name, period
                                        FROM Enrollments 
                                        Left JOIN Courses
                                        ON Courses.course_id = Enrollments.course_id
                                        WHERE student_id={student_id}""").fetchall()
         courses = [(row[0], row[1]) for row in courses_data]
+        formatted_courses = '<br>'.join([f"{course[0]}: {course[1]}" for course in courses])
         # Pass the courses data to the template
-        return render_template('schedule.html', courses=courses)
+        logging.info(courses)
+        return formatted_courses
     else:
         # Handle GET request (render the schedule template)
         return render_template('schedule.html')
