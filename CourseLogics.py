@@ -1,5 +1,4 @@
-from flask import Flask, flash, render_template, request
-from flask_sqlalchemy import SQLAlchemy
+import logging
 def has_overlap(list1, str2):
     slots1 = set(list1.split(','))
     print(f"slots1:{slots1}")
@@ -8,7 +7,6 @@ def has_overlap(list1, str2):
     overlap = slots1.intersection(slots2)
     print(f"overlap:{overlap}")
     return bool(overlap)
-
 # add a course logics
 def course_exist(db, course_id):
     query = "SELECT course_id FROM Courses"
@@ -71,6 +69,35 @@ def is_credit_limit_exceeded(db, student_id, course_id):
     return current_credit + course_credit > 30
 # end of add course logics
 
+# drop course logics => not checked yet
+def has_course(db, student_id, course_id):
+    query = "SELECT enroll_id FROM Enrollments WHERE student_id=%s AND course_id=%s"
+    result = db.engine.execute(query, (student_id, course_id)).fetchall()
+    return bool(result)
+
+def min_credit_limit(db, student_id, course_id):
+    query = "SELECT credit FROM Courses WHERE course_id=%s"
+    course_credit = db.engine.execute(query, (course_id)).fetchone()[0]
+    query = "SELECT total_credit FROM Students WHERE student_id=%s"
+    total_credit = db.engine.execute(query, (student_id)).fetchone()[0]
+    return total_credit - course_credit < 9
+
+def is_mandatory(db, student_id, course_id):
+    query = "SELECT department, year, is_mandatory FROM Courses WHERE course_id=%s"
+    course_info = db.engine.execute(query, (course_id)).fetchone()
+    logging.info(course_info[0])
+    logging.info(course_info[1])
+    logging.info(course_info[2])
+    query = "SELECT department, year FROM Students WHERE student_id=%s"
+    student_info = db.engine.execute(query, (student_id)).fetchone()
+    logging.info(student_info[0])
+    logging.info(student_info[1])
+    # only if student belongs to the same department and the same year as coursse
+    if course_info[0] == student_info[0] and course_info[1] == student_info[1]:
+        if course_info[2]:
+            return True
+    return False
+
 def add_course(db, student_id, course_id):
     try:
         if not course_exist(db, course_id):
@@ -112,6 +139,39 @@ def add_course(db, student_id, course_id):
 
         return "add course successfully"
 
+    except Exception as e:
+        # Rollback the nested transaction if an error occurs
+        db.session.rollback()
+        return str(e)
+
+def drop_course(db, student_id, course_id):
+    try:
+        if not course_exist(db, course_id):
+            return "fail, course not found"
+        if not student_exist(db, student_id):
+            return "fail, student not found"
+        if not has_course(db, student_id, course_id):
+            return "fail, does not have this course"
+        if min_credit_limit(db, student_id, course_id):
+            return "fail, minimum credit limit"
+        if is_mandatory(db, student_id, course_id):
+            return "fail, mandatory class must contact school offic"
+        # Start a nested transaction
+        db.session.begin_nested()
+
+        # Delete from enrollments where student_id and course_id equals given data
+        query = "DELETE FROM Enrollments WHERE student_id=%s AND course_id=%s"
+        db.engine.execute(query, (student_id,course_id))
+        # 1. update course current capacity
+        query = "UPDATE Courses SET current_capacity = current_capacity - 1 WHERE course_id=%s"
+        db.engine.execute(query, (course_id))
+        # 2. update student total credits
+
+        query = "UPDATE Students SET total_credit = total_credit - (SELECT credit FROM Courses WHERE course_id = %s) WHERE student_id=%s"
+        db.engine.execute(query, (course_id, student_id))
+
+        db.session.commit()
+        return "drop course successfully"
     except Exception as e:
         # Rollback the nested transaction if an error occurs
         db.session.rollback()

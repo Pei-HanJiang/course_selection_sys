@@ -1,7 +1,7 @@
 from flask import Flask, flash, render_template, request
 from flask_sqlalchemy import SQLAlchemy
 import logging
-from addCourse import add_course
+from CourseLogics import add_course, drop_course
 
 app = Flask(__name__)
 # Set up logging
@@ -41,61 +41,14 @@ def drop():
         course_id = request.form['inputCourseID'] 
         logging.info(f'Student ID: {student_id}')
         logging.info(f'Course ID: {course_id}')
-        # dummy-proof
-        try:
-            db.session.begin_nested()
-            # check if it's allow to drop
-            # 1.check if the student has the course => test pass
-            result = db.engine.execute(f"""SELECT enroll_id
-                            FROM Enrollments
-                            WHERE student_id = {student_id}
-                            AND course_id = {course_id}
-                            """).fetchall()
-            logging.info(result)
-            if not result:
-                return "Fail, the course is not enrolled"
-            
-            # 2. check if total_credit < 9 after drop
-            course_credit = db.engine.execute(f"""SELECT credit
-                                                FROM Courses
-                                                WHERE course_id = {course_id}""").fetchone()[0]
-            current_credit = db.engine.execute(f"""SELECT total_credit
-                                                FROM Students
-                                                WHERE student_id = {student_id}""").fetchone()[0]
-            if current_credit - course_credit < 9:
-                return "fail, exceeding credit minimum"
-            
-            # 3. check if course is mandatory to take
-            is_mandatory = db.engine.execute(f"""SELECT is_mandatory
-                                            FROM Courses
-                                            WHERE course_id = {course_id}""").fetchone()[0]
-            logging.info(is_mandatory)
-            if is_mandatory:
-                return "cannot withdraw unless contact the office"
-
-
-            # Delete from enrollments where student_id and course_id equals given data
-            db.engine.execute(f"DELETE FROM Enrollments WHERE student_id={student_id} AND course_id={course_id}")
-            # 1. update course current capacity
-            db.engine.execute(f"""UPDATE Courses 
-                            SET current_capacity = current_capacity - 1
-                            WHERE course_id = {course_id}""")
-            # 2. update student total credits
-
-            db.engine.execute(f"""UPDATE Students 
-                        SET total_credit = total_credit - {course_credit}
-                        WHERE student_id = {student_id}""")
-
-            # give a notice wether it's done or not, then return empty template
-            db.session.commit()
-            return render_template('drop.html')
-        except Exception as e:
-            # Rollback the transaction if an error occurs
-            db.session.rollback()
-            return str(e)
+        # Call add_course function to attempt adding the course
+        result = drop_course(db, student_id, course_id) 
+        # Return result to the user
+        return result
     else:
-        # Handle GET request (e.g., render the form)
+        # Handle GET request
         return render_template('drop.html')
+
 
 
 @app.route('/create', methods=['GET', 'POST'])
