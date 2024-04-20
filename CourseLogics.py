@@ -97,7 +97,9 @@ def is_mandatory(db, student_id, course_id):
         if course_info[2]:
             return True
     return False
+# end of drop course logics
 
+# modular the function
 def add_course(db, student_id, course_id):
     try:
         if not course_exist(db, course_id):
@@ -123,6 +125,7 @@ def add_course(db, student_id, course_id):
         # Add student_id and course_id to Enrollments table
         query = "INSERT INTO Enrollments(student_id, course_id) VALUES (%s, %s)"
         db.engine.execute(query, (student_id, course_id))
+        logging.info("add enrollments")
 
         # Update student's total credit
         query = """UPDATE Students SET total_credit = total_credit +
@@ -176,3 +179,21 @@ def drop_course(db, student_id, course_id):
         # Rollback the nested transaction if an error occurs
         db.session.rollback()
         return str(e)
+    
+
+def create_student(db, department, year):
+    try:
+        db.session.begin_nested()
+        db.engine.execute("INSERT INTO Students (department, year) VALUES (%s, %s)", (department, year))
+        student_id = db.engine.execute("""SELECT student_id
+                                        FROM Students
+                                        ORDER BY student_id DESC
+                                        LIMIT 1""").fetchone()[0]
+        logging.info(type(student_id))
+        db.session.commit()
+        return student_id
+    except Exception as e:
+        # Rollback the nested transaction if an error occurs
+        db.session.rollback()
+        return str(e)
+    
