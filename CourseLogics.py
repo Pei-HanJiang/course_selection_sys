@@ -1,5 +1,9 @@
 import logging
 def has_overlap(list1, str2):
+    if not str2:
+        return False
+    if not list1:
+        return False
     slots1 = set(list1.split(','))
     print(f"slots1:{slots1}")
     slots2 = set(str2.split(','))

@@ -1,6 +1,7 @@
 from flask import Flask, flash, render_template, request
 from flask_sqlalchemy import SQLAlchemy
 import logging
+import json
 from CourseLogics import add_course, drop_course, create_student
 
 app = Flask(__name__)
@@ -31,8 +32,6 @@ def add_form():
         # Handle GET request
         return render_template('add.html')
 
-
-
 @app.route('/drop', methods=['GET', 'POST'])
 def drop():
     if request.method == 'POST':
@@ -49,8 +48,6 @@ def drop():
         # Handle GET request
         return render_template('drop.html')
 
-
-
 @app.route('/create', methods=['GET', 'POST'])
 def create():
     if request.method == 'POST':
@@ -60,7 +57,7 @@ def create():
         logging.info(year)
 
         student_id = create_student(db, department, year)
-        
+
         # get all the course_id with same department, same year, and is_mandatory is True
         course_ids = db.engine.execute("""SELECT course_id
                                     FROM Courses
@@ -83,29 +80,28 @@ def create():
 @app.route('/schedule', methods=['GET', 'POST'])
 def schedule():
     if request.method == 'POST':
-        # Retrieve data
+    # Retrieve data
         student_id = request.form['inputStudentID']
-        try:
-            db.session.begin_nested()
-            # Query the database to retrieve the courses for the given student_id
-            query = """SELECT course_name, period
-                        FROM Enrollments 
-                        Left JOIN Courses
-                        ON Courses.course_id = Enrollments.course_id
-                        WHERE student_id=%s"""
-            courses_data = db.engine.execute(query, (student_id)).fetchall()
-            courses = [(row[0], row[1]) for row in courses_data]
-            formatted_courses = '<br>'.join([f"{course[0]}: {course[1]}" for course in courses])
-            # Pass the courses data to the template
-            logging.info(courses)
-            db.session.commit()
-            return formatted_courses
-        except Exception as e:
-            # Rollback the transaction if an error occurs
-            db.session.rollback()
-            return str(e)
+        # Query the database to retrieve the courses for the given student_id
+        query = """SELECT Courses.course_id, course_name, department, year, is_mandatory, max_capacity, current_capacity, credit, period
+                    FROM Enrollments 
+                    Left JOIN Courses
+                    ON Courses.course_id = Enrollments.course_id
+                    WHERE student_id=%s"""
+        courses_data = db.engine.execute(query, (student_id)).fetchall()
+        courses_data = [(*row,) for row in courses_data]
+        logging.info(courses_data)
+
+        headers = ['CourseId', 'CourseName', 'Department', 'Year', 'Mandatory', 'MaxCapacity', 'CurrentCap', 'Credit', 'Period']
+        html_table = '<table style="width:100%; text-align:center;"><tr>' + ''.join(f"<th>{header}</th>" for header in headers) + '</tr>'
+        for course in courses_data:
+            html_table += '<tr>' + ''.join(f"<td>{str(value)}</td>" for value in course) + '</tr>'
+
+        html_table += '</table>'
+        formatted_courses = html_table
+        return formatted_courses
     else:
-        # Handle GET request (render the schedule template)
+        # Handle GET request
         return render_template('schedule.html')
 
 if __name__ == '__main__':

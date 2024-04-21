@@ -31,7 +31,7 @@
     </div>
 </form>
 
-<table id="schedule-table" class="table">
+<!-- <table id="schedule-table" class="table">
     <thead>
         <tr>
             <th scope="col">Period</th>
@@ -44,51 +44,62 @@
     </thead>
     <tbody id="schedule-body">
         <!-- Table rows will be generated dynamically here -->
-    </tbody>
-</table>
+    <!-- </tbody>
+</table> --> 
 
-<script>
-    // Function to generate table rows
-    function generateRows() {
-        var tbody = document.getElementById('schedule-body');
-        var rowsCount = 14; // Number of rows to generate
+<!-- <script>
+  // Function to generate table rows
+  function generateRows() {
+      var tbody = document.getElementById('schedule-body');
+      var rowsCount = 14; // Number of rows to generate
 
-        for (var i = 1; i <= rowsCount; i++) {
-            var row = document.createElement('tr');
+      for (var i = 1; i <= rowsCount; i++) {
+          var row = document.createElement('tr');
 
-            // Time cell
-            var timeCell = document.createElement('td');
-            timeCell.textContent = i;
-            row.appendChild(timeCell);
+          // Time cell
+          var timeCell = document.createElement('td');
+          timeCell.textContent = i;
+          row.appendChild(timeCell);
 
-            // Empty cells for each day
-            for (var j = 0; j < 5; j++) {
-                var cell = document.createElement('td');
-                var cellId = 'cell_' + i + '_' + j; // Generate unique ID for each cell
-                cell.setAttribute('id', cellId);
-                row.appendChild(cell);
-            }
+          // Empty cells for each day
+          for (var j = 0; j < 5; j++) {
+              var cell = document.createElement('td');
+              var cellId = 'cell_' + i + '_' + j; // Generate unique ID for each cell
+              cell.setAttribute('id', cellId);
+              row.appendChild(cell);
+          }
 
-            tbody.appendChild(row);
-        }
-    }
+          tbody.appendChild(row);
+      }
+  }
 
-    // Function to access and manipulate a cell in the table
-    function manipulateCell(rowIndex, colIndex, value) {
-        var table = document.getElementById('schedule-body');
-        var row = table.rows[rowIndex];
-        var cell = row.cells[colIndex];
-        if (cell) {
-            cell.textContent = value;
-        }
-    }
+  // Function to populate the schedule table cells
+  function populateSchedule(courses) {
+      courses.forEach(function(course) {
+          var courseName = course[0];
+          var period = parseInt(course[1]); // Convert period to integer
+          var dayIndex = (period - 1) % 5 + 1; // Calculate the day index
+          var rowIndex = Math.ceil(period / 5); // Calculate the row index
 
-    // Call the function to generate rows
-    generateRows();
-    // Example: Set the value of cell at row 2, column 3
-    manipulateCell(2, 3, 'TESTTTTT');
+          manipulateCell(rowIndex, dayIndex, courseName); // Populate the cell with course name
+      });
+  }
 
-</script>
+  // Function to access and manipulate a cell in the table
+  function manipulateCell(rowIndex, colIndex, value) {
+      var table = document.getElementById('schedule-body');
+      var row = table.rows[rowIndex];
+      var cell = row.cells[colIndex];
+      if (cell) {
+          cell.textContent = value;
+      }
+  }
+
+  generateRows();
+  // Example: Populate the schedule table with courses
+  var courses = JSON.parse('{{ courses }}');; // Retrieve courses from Flask and convert to JavaScript array
+  populateSchedule(courses);
+</script> -->
 
 </body>
 </html>
